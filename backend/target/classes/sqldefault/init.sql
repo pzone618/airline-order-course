@@ -15,16 +15,6 @@ USE `airline_order_db`;
 -- 用于存储用户信息，对应 User.java 实体
 DROP TABLE IF EXISTS `orders`;
 DROP TABLE IF EXISTS `app_users`;
-DROP TABLE IF EXISTS `shedlock`;
-
-CREATE TABLE `shedlock`
-(
-    `name`       VARCHAR(255) NOT NULL,
-    `lock_until` TIMESTAMP(3) NOT NULL,
-    `lock_at`    TIMESTAMP(3) NOT NULL,
-    `locked_by`  VARCHAR(255) NOT NULL,
-    PRIMARY KEY (`name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `app_users` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
