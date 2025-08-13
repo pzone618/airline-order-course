@@ -42,13 +42,9 @@ jobs:
             set -euo pipefail
 
             APP_DIR="${HOME}/airline-cicd"
-            DOCKER_USER="${{ secrets.DOCKER_HUB_USERNAME }}"
-            DOCKER_TOKEN="${{ secrets.DOCKER_HUB_TOKEN }}"
-
-            # 进入部署目录（确保存在）
             cd "$APP_DIR"
 
-            # Compose v2/v1 兼容
+            # 选 compose 命令
             if sudo docker compose version >/dev/null 2>&1; then
               DC="sudo docker compose"
             elif sudo docker-compose --version >/dev/null 2>&1; then
@@ -57,15 +53,13 @@ jobs:
               echo "❌ Docker Compose 未安装"; exit 1
             fi
 
-            # （可选）删除已废弃的 version 字段影响：不需要动作，保留提示即可
+            # 登录 Docker Hub（私有仓库需要；公有仓库执行也无妨）
+            echo "${{ secrets.DOCKER_HUB_TOKEN }}" | sudo docker login \
+              --username "${{ secrets.DOCKER_HUB_USERNAME }}" --password-stdin
 
-            # 如仓库是私有，先登录 Docker Hub（公有可跳过：仍然安全且无副作用）
-            if [ -n "$DOCKER_USER" ] && [ -n "$DOCKER_TOKEN" ]; then
-              echo "$DOCKER_TOKEN" | sudo docker login --username "$DOCKER_USER" --password-stdin
-            fi
-
-            # 写 .env（保持你原来的变量）
+            # 写 .env（新增 DOCKER_HUB_USERNAME 用于镜像变量替换）
             {
+              echo "DOCKER_HUB_USERNAME=${{ secrets.DOCKER_HUB_USERNAME }}"
               echo "SPRING_PROFILES_ACTIVE=prod"
               echo "MYSQL_ROOT_PASSWORD=${{ secrets.EC2_MYSQL_ROOT_PASSWORD }}"
               echo "MYSQL_DATABASE=airline_order_db"
@@ -73,8 +67,9 @@ jobs:
               echo "MYSQL_PASSWORD=${{ secrets.EC2_MYSQL_PASSWORD }}"
             } > .env
 
-            # 拉镜像并启动（up 会自动拉取最新标签）
-            $DC pull || true   # 私有/网络波动时先容错，再由 up 兜底
+            # 部署（up 会自动拉最新标签）
+            $DC pull || true
             $DC up -d --remove-orphans
             $DC ps
+
 
