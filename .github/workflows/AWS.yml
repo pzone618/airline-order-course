@@ -29,8 +29,8 @@ jobs:
           file: ./backend/Dockerfile
           push: true
           tags: |
-            ${{ secrets.DOCKER_HUB_USERNAME }}/airline-order-manage:latest
-            ${{ secrets.DOCKER_HUB_USERNAME }}/airline-order-manage:${{ github.sha }}
+            ${{ secrets.DOCKER_HUB_USERNAME }}/airline-order-backend:latest
+            ${{ secrets.DOCKER_HUB_USERNAME }}/airline-order-backend:${{ github.sha }}
             
       - name: Deploy on EC2 via SSH
         uses: appleboy/ssh-action@v1
