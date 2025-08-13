@@ -39,12 +39,42 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd ~/airline-cicd
-            echo "SPRING_PROFILES_ACTIVE=prod" > .env
-            echo "MYSQL_ROOT_PASSWORD=${{ secrets.EC2_MYSQL_ROOT_PASSWORD }}" >> .env
-            echo "MYSQL_DATABASE=airline_order_db" >> .env
-            echo "MYSQL_USER=${{ secrets.EC2_MYSQL_USER }}" >> .env
-            echo "MYSQL_PASSWORD=${{ secrets.EC2_MYSQL_PASSWORD }}" >> .env
-            sudo docker-compose pull
-            sudo docker-compose down
-            sudo docker-compose up -d
+            set -euo pipefail
+
+            APP_DIR="${HOME}/airline-cicd"
+            DOCKER_USER="${{ secrets.DOCKER_HUB_USERNAME }}"
+            DOCKER_TOKEN="${{ secrets.DOCKER_HUB_TOKEN }}"
+
+            # 进入部署目录（确保存在）
+            cd "$APP_DIR"
+
+            # Compose v2/v1 兼容
+            if sudo docker compose version >/dev/null 2>&1; then
+              DC="sudo docker compose"
+            elif sudo docker-compose --version >/dev/null 2>&1; then
+              DC="sudo docker-compose"
+            else
+              echo "❌ Docker Compose 未安装"; exit 1
+            fi
+
+            # （可选）删除已废弃的 version 字段影响：不需要动作，保留提示即可
+
+            # 如仓库是私有，先登录 Docker Hub（公有可跳过：仍然安全且无副作用）
+            if [ -n "$DOCKER_USER" ] && [ -n "$DOCKER_TOKEN" ]; then
+              echo "$DOCKER_TOKEN" | sudo docker login --username "$DOCKER_USER" --password-stdin
+            fi
+
+            # 写 .env（保持你原来的变量）
+            {
+              echo "SPRING_PROFILES_ACTIVE=prod"
+              echo "MYSQL_ROOT_PASSWORD=${{ secrets.EC2_MYSQL_ROOT_PASSWORD }}"
+              echo "MYSQL_DATABASE=airline_order_db"
+              echo "MYSQL_USER=${{ secrets.EC2_MYSQL_USER }}"
+              echo "MYSQL_PASSWORD=${{ secrets.EC2_MYSQL_PASSWORD }}"
+            } > .env
+
+            # 拉镜像并启动（up 会自动拉取最新标签）
+            $DC pull || true   # 私有/网络波动时先容错，再由 up 兜底
+            $DC up -d --remove-orphans
+            $DC ps
+

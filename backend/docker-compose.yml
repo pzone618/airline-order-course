@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   backend-app:
-    image: monkeydleon/airline-order-backend:latest
+    image: ${DOCKER_HUB_USERNAME}/airline-order-backend:latest
     container_name: airline-backend
     restart: always
     ports:
