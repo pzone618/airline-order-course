@@ -1,74 +1,43 @@
 package com.postion.airlineorderbackend.controller;
 
-import com.postion.airlineorderbackend.dto.UserDto;
-import com.postion.airlineorderbackend.model.User;
-import com.postion.airlineorderbackend.repo.UserRepository;
-import com.postion.airlineorderbackend.security.jwt.JwtUtils;
-import com.postion.airlineorderbackend.security.services.UserDetailsImpl;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.HashMap;
-import java.util.Map;
+import com.postion.airlineorderbackend.dto.BaseResponse;
+import com.postion.airlineorderbackend.dto.LoginRequest;
+import com.postion.airlineorderbackend.dto.LoginResponse;
+import com.postion.airlineorderbackend.dto.RegisterRequest;
+import com.postion.airlineorderbackend.service.AuthService;
 
-@CrossOrigin(origins = "*", maxAge = 3600)
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/auth")
+@Tag(name = "认证接口", description = "用户注册与登录相关操作")
 public class AuthController {
-    @Autowired
-    AuthenticationManager authenticationManager;
 
-    @Autowired
-    UserRepository userRepository;
+    private final AuthService authService;
 
-    @Autowired
-    PasswordEncoder encoder;
-
-    @Autowired
-    JwtUtils jwtUtils;
-
-    @PostMapping("/login")
-    public ResponseEntity<?> authenticateUser(@RequestBody UserDto loginRequest) {
-
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
-
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        String jwt = jwtUtils.generateJwtToken(authentication);
-
-        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("token", jwt);
-        response.put("id", userDetails.getId());
-        response.put("username", userDetails.getUsername());
-        response.put("role", userDetails.getAuthorities().iterator().next().getAuthority());
-
-        return ResponseEntity.ok(response);
-    }
-
+    @Operation(summary = "注册用户", description = "注册一个新用户")
     @PostMapping("/register")
-    public ResponseEntity<?> registerUser(@RequestBody UserDto signUpRequest) {
-        if (userRepository.findByUsername(signUpRequest.getUsername()).isPresent()) {
-            return ResponseEntity
-                    .badRequest()
-                    .body("Error: Username is already taken!");
-        }
-
-        // Create new user's account
-        User user = new User();
-        user.setUsername(signUpRequest.getUsername());
-        user.setPassword(encoder.encode(signUpRequest.getPassword()));
-        user.setRole(signUpRequest.getRole() != null ? signUpRequest.getRole() : "ROLE_USER");
-
-        userRepository.save(user);
-
-        return ResponseEntity.ok("User registered successfully!");
+    public ResponseEntity<BaseResponse<String>> register(@RequestBody @Valid RegisterRequest request) {
+        authService.register(request);
+        return ResponseEntity.ok(BaseResponse.success(HttpStatus.OK, "User registered successfully"));
+    }
+    
+    @Operation(summary = "用户登录", description = "用户使用凭证登录，返回JWT令牌")
+    @PostMapping("/login")
+    public ResponseEntity<BaseResponse<LoginResponse>> login(@RequestBody LoginRequest request) {
+    	LoginResponse response = authService.login(request);
+    	return ResponseEntity.ok(BaseResponse.success(HttpStatus.OK, response));
+    	
     }
 }

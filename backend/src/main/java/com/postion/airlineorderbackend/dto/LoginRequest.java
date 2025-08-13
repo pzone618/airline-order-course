@@ -1,5 +1,6 @@
 package com.postion.airlineorderbackend.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -7,8 +8,10 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserDTO {
-    private Long id;
+public class LoginRequest {
+    @NotBlank
     private String username;
-    private String role;
+
+    @NotBlank
+    private String password;
 }
