@@ -5,8 +5,8 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.0</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <version>3.4.0</version>
+        <relativePath/>
     </parent>
     <groupId>com.postion</groupId>
     <artifactId>airline-order-backend</artifactId>
@@ -77,10 +77,8 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <!-- <optional>true</optional> --> <!-- 这行可以保留也可以删除，影响不大 -->
-            <!-- 我们不再依赖 parent POM 管理版本，而是自己明确指定 -->
-            <version>${lombok.version}</version> <!-- 使用一个被广泛验证的稳定版本 -->
-            <scope>provided</scope> <!-- 关键：Lombok只在编译期需要，运行时不需要，provided是最佳scope -->
+            <version>${lombok.version}</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
 		    <groupId>net.javacrumbs.shedlock</groupId>
@@ -112,15 +110,17 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.8.1</version> <!-- 这是一个稳定版本，可以保持不变 -->
+                <version>3.11.0</version>
                 <configuration>
-                    <source>${java.version}</source> <!-- 再次确认源文件版本 -->
-                    <target>${java.version}</target> <!-- 再次确认目标字节码版本 -->
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                    <encoding>UTF-8</encoding>
+                    <parameters>true</parameters>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
-                            <version>${lombok.version}</version> <!-- 版本要与上面依赖中指定的版本一致 -->
+                            <version>${lombok.version}</version>
                         </path>
                     </annotationProcessorPaths>
                 </configuration>
