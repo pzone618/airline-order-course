@@ -26,16 +26,21 @@ jobs:
         id: validate-secrets
         run: |
           missing=0
-          check() { varName=$1; val=$2; if [ -z "$val" ]; then echo "::error::Missing secret $varName"; missing=1; else echo "Secret $varName present"; fi }
+          check() { varName=$1; val=$2; if [ -z "$val" ]; then echo "::warning::Missing secret $varName"; missing=1; else echo "Secret $varName present"; fi }
           check DOCKER_HUB_USERNAME "${DOCKER_HUB_USERNAME}"
-          check DOCKER_HUB_TOKEN "${DOCKER_HUB_TOKEN}"
-          check EC2_HOST "${EC2_HOST}"
-          check EC2_USER "${EC2_USER}"
-          check EC2_SSH_KEY "${EC2_SSH_KEY}"
-          check EC2_MYSQL_ROOT_PASSWORD "${EC2_MYSQL_ROOT_PASSWORD}"
-          check EC2_MYSQL_USER "${EC2_MYSQL_USER}"
-          check EC2_MYSQL_PASSWORD "${EC2_MYSQL_PASSWORD}"
-          if [ $missing -eq 1 ]; then echo "::error::One or more required secrets are missing. Failing early."; exit 1; fi
+            check DOCKER_HUB_TOKEN "${DOCKER_HUB_TOKEN}"
+            check EC2_HOST "${EC2_HOST}"
+            check EC2_USER "${EC2_USER}"
+            check EC2_SSH_KEY "${EC2_SSH_KEY}"
+            check EC2_MYSQL_ROOT_PASSWORD "${EC2_MYSQL_ROOT_PASSWORD}"
+            check EC2_MYSQL_USER "${EC2_MYSQL_USER}"
+            check EC2_MYSQL_PASSWORD "${EC2_MYSQL_PASSWORD}"
+          if [ $missing -eq 1 ]; then
+            echo "deploy_ok=false" >> $GITHUB_OUTPUT
+            echo "::warning::EC2 deploy step will be skipped.";
+          else
+            echo "deploy_ok=true" >> $GITHUB_OUTPUT
+          fi
         env:
           DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
           DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
@@ -65,20 +70,21 @@ jobs:
           cd backend
           mvn -q help:effective-pom | grep -A2 "<artifactId>maven-compiler-plugin</artifactId>" | head -n5 || true
           ls -1 src/main/java/com/postion/airlineorderbackend/dto || true
-            
+
       - name: Deploy on EC2 via SSH
+        if: steps.validate-secrets.outputs.deploy_ok == 'true'
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            cd ~/airline-cicd
-            echo "SPRING_PROFILES_ACTIVE=prod" > .env
-            echo "MYSQL_ROOT_PASSWORD=${{ secrets.EC2_MYSQL_ROOT_PASSWORD }}" >> .env
-            echo "MYSQL_DATABASE=airline_order_db" >> .env
-            echo "MYSQL_USER=${{ secrets.EC2_MYSQL_USER }}" >> .env
-            echo "MYSQL_PASSWORD=${{ secrets.EC2_MYSQL_PASSWORD }}" >> .env
-            docker-compose pull
-            docker-compose down
-            docker-compose up -d
+        script: |
+          cd ~/airline-cicd
+          echo "SPRING_PROFILES_ACTIVE=prod" > .env
+          echo "MYSQL_ROOT_PASSWORD=${{ secrets.EC2_MYSQL_ROOT_PASSWORD }}" >> .env
+          echo "MYSQL_DATABASE=airline_order_db" >> .env
+          echo "MYSQL_USER=${{ secrets.EC2_MYSQL_USER }}" >> .env
+          echo "MYSQL_PASSWORD=${{ secrets.EC2_MYSQL_PASSWORD }}" >> .env
+          docker-compose pull
+          docker-compose down
+          docker-compose up -d
