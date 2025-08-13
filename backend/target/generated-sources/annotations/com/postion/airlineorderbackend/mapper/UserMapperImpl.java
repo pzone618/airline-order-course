@@ -2,12 +2,12 @@ package com.postion.airlineorderbackend.mapper;
 
 import com.postion.airlineorderbackend.dto.UserDto;
 import com.postion.airlineorderbackend.model.User;
-import javax.annotation.Generated;
+import javax.annotation.processing.Generated;
 import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-08-13T14:07:06+0800",
+    date = "2025-08-13T14:40:53+0800",
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 21.0.7 (Eclipse Adoptium)"
 )
 @Component

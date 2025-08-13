@@ -1,7 +1,7 @@
 package com.postion.airlineorderbackend.model;
 
 import lombok.Data;
-import javax.persistence.*;
+import jakarta.persistence.*;
 
 @Entity
 @Table(name = "app_users")

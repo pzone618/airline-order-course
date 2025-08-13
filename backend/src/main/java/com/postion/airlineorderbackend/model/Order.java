@@ -1,6 +1,6 @@
 package com.postion.airlineorderbackend.model;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
 import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
