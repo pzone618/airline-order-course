@@ -22,6 +22,30 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
+      - name: Validate required secrets
+        id: validate-secrets
+        run: |
+          missing=0
+          check() { varName=$1; val=$2; if [ -z "$val" ]; then echo "::error::Missing secret $varName"; missing=1; else echo "Secret $varName present"; fi }
+          check DOCKER_HUB_USERNAME "${DOCKER_HUB_USERNAME}"
+          check DOCKER_HUB_TOKEN "${DOCKER_HUB_TOKEN}"
+          check EC2_HOST "${EC2_HOST}"
+          check EC2_USER "${EC2_USER}"
+          check EC2_SSH_KEY "${EC2_SSH_KEY}"
+          check EC2_MYSQL_ROOT_PASSWORD "${EC2_MYSQL_ROOT_PASSWORD}"
+          check EC2_MYSQL_USER "${EC2_MYSQL_USER}"
+          check EC2_MYSQL_PASSWORD "${EC2_MYSQL_PASSWORD}"
+          if [ $missing -eq 1 ]; then echo "::error::One or more required secrets are missing. Failing early."; exit 1; fi
+        env:
+          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+          DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_MYSQL_ROOT_PASSWORD: ${{ secrets.EC2_MYSQL_ROOT_PASSWORD }}
+          EC2_MYSQL_USER: ${{ secrets.EC2_MYSQL_USER }}
+          EC2_MYSQL_PASSWORD: ${{ secrets.EC2_MYSQL_PASSWORD }}
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
@@ -31,6 +55,16 @@ jobs:
           tags: |
             ${{ secrets.DOCKER_HUB_USERNAME }}/airline-order-manage:latest
             ${{ secrets.DOCKER_HUB_USERNAME }}/airline-order-manage:${{ github.sha }}
+          build-args: |
+            CACHE_BUSTER=${{ github.run_id }}
+          no-cache: true
+          provenance: false
+
+      - name: Show effective compiler plugin (debug)
+        run: |
+          cd backend
+          mvn -q help:effective-pom | grep -A2 "<artifactId>maven-compiler-plugin</artifactId>" | head -n5 || true
+          ls -1 src/main/java/com/postion/airlineorderbackend/dto || true
             
       - name: Deploy on EC2 via SSH
         uses: appleboy/ssh-action@v1
