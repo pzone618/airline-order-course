@@ -1,19 +1,91 @@
-version: '3.8'
-
 services:
+  db:
+    image: mysql:8.0
+    container_name: airline-mysql
+    command: >
+      --default-authentication-plugin=caching_sha2_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: airline_order_db
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "3306:3306"  # 外网 3306 -> 容器 3306
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -p${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # 一次性数据库初始化/迁移：创建 shedlock 表并补齐缺失列
+  # 一次性数据库初始化/迁移：创建 shedlock 表并补齐缺失列
+  db-init:
+    image: mysql:8.0
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      MYSQL_HOST: db
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      # 用 root 执行，确保有 DDL 权限
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    entrypoint: ["/bin/sh","-lc"]
+    command: |
+      set -e
+      echo "Waiting for MySQL to accept connections..."
+      for i in $(seq 1 30); do
+        mysqladmin ping -h "$MYSQL_HOST" -p"$MYSQL_PASSWORD" --silent && break
+        sleep 1
+      done
+
+      echo "Running ShedLock schema migration..."
+      mysql -h "$MYSQL_HOST" -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" <<'SQL'
+      CREATE TABLE IF NOT EXISTS shedlock (
+        name        VARCHAR(64)  NOT NULL PRIMARY KEY,
+        lock_until  TIMESTAMP(3) NULL,
+        locked_at   TIMESTAMP(3) NULL,
+        locked_by   VARCHAR(255) NULL
+      );
+      ALTER TABLE shedlock ADD COLUMN IF NOT EXISTS locked_at TIMESTAMP(3) NULL;
+      ALTER TABLE shedlock ADD COLUMN IF NOT EXISTS locked_by VARCHAR(255) NULL;
+      SQL
+
+      echo "ShedLock table ensured."
+    restart: "no"
+    networks:
+      - app-network
+
   backend-app:
     image: ${DOCKER_HUB_USERNAME}/airline-order-backend:latest
     container_name: airline-backend
-    restart: always
-    ports:
-      - "8080:8080"
+    env_file:
+      - .env
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_URL: jdbc:mysql://172.31.39.216:3306/airline_order_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/airline_order_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "80:8080"  # 外网 80 -> 容器 8080
+    depends_on:
+      db:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
     networks:
       - app-network
+
+volumes:
+  db_data:
 
 networks:
   app-network:
