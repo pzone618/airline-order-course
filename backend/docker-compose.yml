@@ -74,7 +74,7 @@ services:
       SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
     ports:
-      - "80:8080"  # 外网 80 -> 容器 8080
+      - "8080:8080"  # 外网 80 -> 容器 8080
     depends_on:
       db:
         condition: service_healthy
