@@ -1,4 +1,4 @@
-# 构建阶段：用 Maven + JDK 21 构建 Spring Boot 应用
+#  构建阶段：用 Maven + JDK 21 构建 Spring Boot 应用
 FROM maven:3.9.6-eclipse-temurin-21 AS backend-builder
 WORKDIR /app
 
