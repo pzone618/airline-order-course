@@ -40,15 +40,14 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -euo pipefail
-
             APP_DIR="${HOME}/airline-cicd"
             cd "$APP_DIR"
 
             # 选 compose 命令
             if sudo docker compose version >/dev/null 2>&1; then
-              DC="sudo docker compose"
+              DC="sudo docker compose -p airline-cicd"
             elif sudo docker-compose --version >/dev/null 2>&1; then
-              DC="sudo docker-compose"
+              DC="sudo docker-compose -p airline-cicd"
             else
               echo "❌ Docker Compose 未安装"; exit 1
             fi
@@ -57,7 +56,7 @@ jobs:
             echo "${{ secrets.DOCKER_HUB_TOKEN }}" | sudo docker login \
               --username "${{ secrets.DOCKER_HUB_USERNAME }}" --password-stdin
 
-            # 写 .env（新增 DOCKER_HUB_USERNAME 用于镜像变量替换）
+            # 写 .env（保持与 compose 的变量对齐）
             {
               echo "DOCKER_HUB_USERNAME=${{ secrets.DOCKER_HUB_USERNAME }}"
               echo "SPRING_PROFILES_ACTIVE=prod"
@@ -67,9 +66,15 @@ jobs:
               echo "MYSQL_PASSWORD=${{ secrets.EC2_MYSQL_PASSWORD }}"
             } > .env
 
-            # 部署（up 会自动拉最新标签）
+            # 第一次切换到 A 方案时，确保没有旧的手工容器占 80 端口
+            sudo docker rm -f airline-frontend 2>/dev/null || true
+
+            # 下线旧栈并清孤儿 → 拉镜像 → 强制重建并清孤儿
+            $DC down --remove-orphans || true
             $DC pull || true
-            $DC up -d --remove-orphans
+            $DC up -d --pull always --force-recreate --remove-orphans frontend backend-app
+
             $DC ps
+
 
 
